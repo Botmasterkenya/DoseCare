@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "769198132858",
+    "project_id": "dosecare-c5324",
+    "storage_bucket": "dosecare-c5324.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:769198132858:android:3ca78dd2505127e38675c3",
+        "android_client_info": {
+          "package_name": "com.tee.dosecare"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDJsOw9jfl8q8BZlB7sGMjSR67LFUwJwJM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
