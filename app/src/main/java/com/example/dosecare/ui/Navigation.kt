@@ -1,15 +1,21 @@
 package com.example.dosecare.ui
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.tee.dosecare.ui.auth.AuthViewModel
 import com.tee.dosecare.ui.auth.LoginScreen
 import com.tee.dosecare.ui.auth.RegisterScreen
 import com.tee.dosecare.ui.home.HomeScreen
 import com.tee.dosecare.ui.onboarding.OnboardingScreen
 import com.tee.dosecare.ui.onboarding.SplashScreen
+import com.tee.dosecare.utils.Resource
 
 sealed class Screen(val route: String) {
     object Splash : Screen("splash")
@@ -24,6 +30,9 @@ fun DoseCareNavHost(
     navController: NavHostController = rememberNavController(),
     startDestination: String = Screen.Splash.route
 ) {
+    val authViewModel: AuthViewModel = hiltViewModel()
+    val isOnboardingCompleted by authViewModel.isOnboardingCompleted.collectAsState()
+
     NavHost(
         navController = navController,
         startDestination = startDestination
@@ -31,7 +40,12 @@ fun DoseCareNavHost(
         composable(Screen.Splash.route) {
             SplashScreen(
                 onNavigateNext = {
-                    navController.navigate(Screen.Onboarding.route) {
+                    val destination = when {
+                        authViewModel.isUserLoggedIn -> Screen.Home.route
+                        isOnboardingCompleted -> Screen.Login.route
+                        else -> Screen.Onboarding.route
+                    }
+                    navController.navigate(destination) {
                         popUpTo(Screen.Splash.route) { inclusive = true }
                     }
                 }
@@ -41,6 +55,7 @@ fun DoseCareNavHost(
         composable(Screen.Onboarding.route) {
             OnboardingScreen(
                 onFinish = {
+                    authViewModel.completeOnboarding()
                     navController.navigate(Screen.Login.route) {
                         popUpTo(Screen.Onboarding.route) { inclusive = true }
                     }
@@ -49,20 +64,54 @@ fun DoseCareNavHost(
         }
 
         composable(Screen.Login.route) {
+            val loginState by authViewModel.loginState.collectAsState()
+            val isLoading = loginState is Resource.Loading
+            val errorMessage = (loginState as? Resource.Error)?.message
+
+            LaunchedEffect(loginState) {
+                if (loginState is Resource.Success) {
+                    authViewModel.resetLoginState()
+                    navController.navigate(Screen.Home.route) {
+                        popUpTo(Screen.Login.route) { inclusive = true }
+                    }
+                }
+            }
+
             LoginScreen(
-                onLoginClick = { email, password -> },
+                onLoginClick = { email, password ->
+                    authViewModel.login(email, password)
+                },
                 onNavigateToRegister = {
                     navController.navigate(Screen.Register.route)
-                }
+                },
+                isLoading = isLoading,
+                errorMessage = errorMessage
             )
         }
 
         composable(Screen.Register.route) {
+            val registerState by authViewModel.registerState.collectAsState()
+            val isLoading = registerState is Resource.Loading
+            val errorMessage = (registerState as? Resource.Error)?.message
+
+            LaunchedEffect(registerState) {
+                if (registerState is Resource.Success) {
+                    authViewModel.resetRegisterState()
+                    navController.navigate(Screen.Home.route) {
+                        popUpTo(Screen.Onboarding.route) { inclusive = true }
+                    }
+                }
+            }
+
             RegisterScreen(
-                onRegisterClick = { name, email, password -> },
+                onRegisterClick = { name, email, password ->
+                    authViewModel.register(name, email, password)
+                },
                 onNavigateToLogin = {
                     navController.popBackStack()
-                }
+                },
+                isLoading = isLoading,
+                errorMessage = errorMessage
             )
         }
 
