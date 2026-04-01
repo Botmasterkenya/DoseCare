@@ -1,4 +1,4 @@
-package com.example.dosecare.utils
+package com.tee.dosecare.utils
 
 sealed class Resource<out T> {
     data class Success<T>(val data: T) : Resource<T>()

@@ -1,4 +1,4 @@
-package com.example.dosecare.ui.auth
+package com.tee.dosecare.ui.auth
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*

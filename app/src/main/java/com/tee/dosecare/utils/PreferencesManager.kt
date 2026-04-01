@@ -1,4 +1,4 @@
-package com.example.dosecare.utils
+package com.tee.dosecare.utils
 
 import android.content.Context
 import androidx.datastore.core.DataStore

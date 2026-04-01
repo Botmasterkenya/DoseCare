@@ -1,4 +1,4 @@
-package com.example.dosecare.ui.onboarding
+package com.tee.dosecare.ui.onboarding
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween

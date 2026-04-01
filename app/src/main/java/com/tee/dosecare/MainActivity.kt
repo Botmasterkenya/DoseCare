@@ -1,4 +1,4 @@
-package com.example.dosecare
+package com.tee.dosecare
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity

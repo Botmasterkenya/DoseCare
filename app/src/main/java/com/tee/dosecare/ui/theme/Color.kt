@@ -1,4 +1,4 @@
-package com.example.dosecare.ui.theme
+package com.tee.dosecare.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
