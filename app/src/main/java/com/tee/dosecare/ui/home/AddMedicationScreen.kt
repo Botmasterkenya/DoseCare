@@ -9,7 +9,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -47,6 +46,15 @@ fun AddMedicationScreen(
     var unitExpanded by remember { mutableStateOf(false) }
     var frequencyExpanded by remember { mutableStateOf(false) }
 
+    // Validation
+    val isTimeValid = remember(time1) {
+        val parts = time1.split(":")
+        parts.size == 2 && parts[0].toIntOrNull()?.let { it in 0..23 } == true
+                && parts[1].toIntOrNull()?.let { it in 0..59 } == true
+    }
+    val isSaveEnabled = name.isNotBlank() && dosage.isNotBlank() && isTimeValid
+            && operationState !is Resource.Loading
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -74,21 +82,23 @@ fun AddMedicationScreen(
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
-                label = { Text("Medication Name") },
+                label = { Text("Medication Name *") },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
-                singleLine = true
+                singleLine = true,
+                isError = name.isBlank()
             )
 
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
                     value = dosage,
                     onValueChange = { dosage = it },
-                    label = { Text("Dosage") },
+                    label = { Text("Dosage *") },
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(12.dp),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    singleLine = true
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true,
+                    isError = dosage.isBlank()
                 )
 
                 ExposedDropdownMenuBox(
@@ -101,13 +111,23 @@ fun AddMedicationScreen(
                         onValueChange = {},
                         readOnly = true,
                         label = { Text("Unit") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = unitExpanded) },
-                        modifier = Modifier.menuAnchor().fillMaxWidth(),
+                        trailingIcon = {
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = unitExpanded)
+                        },
+                        modifier = Modifier
+                            .menuAnchor()
+                            .fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp)
                     )
-                    ExposedDropdownMenu(expanded = unitExpanded, onDismissRequest = { unitExpanded = false }) {
+                    ExposedDropdownMenu(
+                        expanded = unitExpanded,
+                        onDismissRequest = { unitExpanded = false }
+                    ) {
                         units.forEach { option ->
-                            DropdownMenuItem(text = { Text(option) }, onClick = { unit = option; unitExpanded = false })
+                            DropdownMenuItem(
+                                text = { Text(option) },
+                                onClick = { unit = option; unitExpanded = false }
+                            )
                         }
                     }
                 }
@@ -122,13 +142,23 @@ fun AddMedicationScreen(
                     onValueChange = {},
                     readOnly = true,
                     label = { Text("Frequency") },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = frequencyExpanded) },
-                    modifier = Modifier.menuAnchor().fillMaxWidth(),
+                    trailingIcon = {
+                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = frequencyExpanded)
+                    },
+                    modifier = Modifier
+                        .menuAnchor()
+                        .fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp)
                 )
-                ExposedDropdownMenu(expanded = frequencyExpanded, onDismissRequest = { frequencyExpanded = false }) {
+                ExposedDropdownMenu(
+                    expanded = frequencyExpanded,
+                    onDismissRequest = { frequencyExpanded = false }
+                ) {
                     frequencies.forEach { option ->
-                        DropdownMenuItem(text = { Text(option) }, onClick = { frequency = option; frequencyExpanded = false })
+                        DropdownMenuItem(
+                            text = { Text(option) },
+                            onClick = { frequency = option; frequencyExpanded = false }
+                        )
                     }
                 }
             }
@@ -138,47 +168,70 @@ fun AddMedicationScreen(
             OutlinedTextField(
                 value = time1,
                 onValueChange = { time1 = it },
-                label = { Text("Time (HH:MM)") },
+                label = { Text("Time (HH:MM) *") },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
                 placeholder = { Text("08:00") },
-                singleLine = true
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                isError = !isTimeValid,
+                supportingText = {
+                    if (!isTimeValid) Text("Enter a valid time e.g. 08:00 or 14:30")
+                }
             )
 
             OutlinedTextField(
                 value = notes,
                 onValueChange = { notes = it },
                 label = { Text("Notes (optional)") },
-                modifier = Modifier.fillMaxWidth().height(100.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(100.dp),
                 shape = RoundedCornerShape(12.dp)
             )
 
-            val isLoading = operationState is Resource.Loading
             val errorMessage = (operationState as? Resource.Error)?.message
-
             errorMessage?.let {
-                Text(it, color = MaterialTheme.colorScheme.error, fontSize = 13.sp)
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer
+                    ),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Text(
+                        it,
+                        color = MaterialTheme.colorScheme.error,
+                        fontSize = 13.sp,
+                        modifier = Modifier.padding(12.dp)
+                    )
+                }
             }
 
             Button(
                 onClick = {
                     val medication = Medication(
-                        name = name,
-                        dosage = dosage,
+                        name = name.trim(),
+                        dosage = dosage.trim(),
                         unit = unit,
                         frequency = frequency,
                         times = "[\"$time1\"]",
                         startDate = System.currentTimeMillis(),
-                        notes = notes
+                        notes = notes.trim()
                     )
                     viewModel.addMedication(medication)
                 },
-                enabled = !isLoading && name.isNotBlank() && dosage.isNotBlank(),
-                modifier = Modifier.fillMaxWidth().height(56.dp),
+                enabled = isSaveEnabled,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
                 shape = RoundedCornerShape(16.dp)
             ) {
-                if (isLoading) {
-                    CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                if (operationState is Resource.Loading) {
+                    CircularProgressIndicator(
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.size(24.dp),
+                        strokeWidth = 2.dp
+                    )
                 } else {
                     Text("Save Medication", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                 }

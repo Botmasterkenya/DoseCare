@@ -22,17 +22,29 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 
 @Composable
 fun LoginScreen(
     onLoginClick: (String, String) -> Unit,
     onNavigateToRegister: () -> Unit,
+    onForgotPassword: ((String, (Boolean, String?) -> Unit) -> Unit)? = null,
     isLoading: Boolean = false,
     errorMessage: String? = null
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
+    var showForgotDialog by remember { mutableStateOf(false) }
+
+    if (showForgotDialog) {
+        ForgotPasswordDialog(
+            onDismiss = { showForgotDialog = false },
+            onSend = { resetEmail, callback ->
+                onForgotPassword?.invoke(resetEmail, callback)
+            }
+        )
+    }
 
     Column(
         modifier = Modifier
@@ -44,23 +56,15 @@ fun LoginScreen(
     ) {
         Spacer(modifier = Modifier.height(64.dp))
 
-        // Header
-        Text(
-            text = "💊",
-            fontSize = 56.sp
-        )
-
+        Text(text = "💊", fontSize = 56.sp)
         Spacer(modifier = Modifier.height(16.dp))
-
         Text(
             text = "Welcome Back",
             fontSize = 28.sp,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onBackground
         )
-
         Spacer(modifier = Modifier.height(8.dp))
-
         Text(
             text = "Sign in to continue managing\nyour medications",
             fontSize = 14.sp,
@@ -71,79 +75,48 @@ fun LoginScreen(
 
         Spacer(modifier = Modifier.height(48.dp))
 
-        // Email field
         OutlinedTextField(
             value = email,
             onValueChange = { email = it },
             label = { Text("Email address") },
             leadingIcon = {
-                Icon(
-                    imageVector = Icons.Filled.Email,
-                    contentDescription = "Email",
-                    tint = MaterialTheme.colorScheme.primary
-                )
+                Icon(Icons.Filled.Email, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
             },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
             shape = RoundedCornerShape(14.dp),
             modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = MaterialTheme.colorScheme.primary,
-                unfocusedBorderColor = MaterialTheme.colorScheme.outline
-            )
+            singleLine = true
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Password field
         OutlinedTextField(
             value = password,
             onValueChange = { password = it },
             label = { Text("Password") },
             leadingIcon = {
-                Icon(
-                    imageVector = Icons.Filled.Lock,
-                    contentDescription = "Password",
-                    tint = MaterialTheme.colorScheme.primary
-                )
+                Icon(Icons.Filled.Lock, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
             },
             trailingIcon = {
                 IconButton(onClick = { passwordVisible = !passwordVisible }) {
                     Icon(
-                        imageVector = if (passwordVisible)
-                            Icons.Filled.Visibility
-                        else
-                            Icons.Filled.VisibilityOff,
-                        contentDescription = if (passwordVisible)
-                            "Hide password"
-                        else
-                            "Show password",
+                        imageVector = if (passwordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
+                        contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )
                 }
             },
-            visualTransformation = if (passwordVisible)
-                VisualTransformation.None
-            else
-                PasswordVisualTransformation(),
+            visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
             shape = RoundedCornerShape(14.dp),
             modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = MaterialTheme.colorScheme.primary,
-                unfocusedBorderColor = MaterialTheme.colorScheme.outline
-            )
+            singleLine = true
         )
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Forgot password
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End
-        ) {
-            TextButton(onClick = { }) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            TextButton(onClick = { showForgotDialog = true }) {
                 Text(
                     text = "Forgot Password?",
                     color = MaterialTheme.colorScheme.primary,
@@ -152,13 +125,10 @@ fun LoginScreen(
             }
         }
 
-        // Error message
         errorMessage?.let {
             Spacer(modifier = Modifier.height(8.dp))
             Card(
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.errorContainer
-                ),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
                 shape = RoundedCornerShape(10.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -173,17 +143,12 @@ fun LoginScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Login button
         Button(
             onClick = { onLoginClick(email, password) },
             enabled = !isLoading && email.isNotBlank() && password.isNotBlank(),
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp),
+            modifier = Modifier.fillMaxWidth().height(56.dp),
             shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.primary
-            )
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
         ) {
             if (isLoading) {
                 CircularProgressIndicator(
@@ -192,17 +157,12 @@ fun LoginScreen(
                     strokeWidth = 2.dp
                 )
             } else {
-                Text(
-                    text = "Sign In",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
+                Text("Sign In", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
             }
         }
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Register link
         Row(
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
@@ -223,5 +183,108 @@ fun LoginScreen(
         }
 
         Spacer(modifier = Modifier.height(32.dp))
+    }
+}
+
+@Composable
+fun ForgotPasswordDialog(
+    onDismiss: () -> Unit,
+    onSend: (String, (Boolean, String?) -> Unit) -> Unit
+) {
+    var email by remember { mutableStateOf("") }
+    var isLoading by remember { mutableStateOf(false) }
+    var message by remember { mutableStateOf<String?>(null) }
+    var isSuccess by remember { mutableStateOf(false) }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text("Reset Password", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    "Enter your email and we'll send you a password reset link.",
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                    textAlign = TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+
+                if (!isSuccess) {
+                    OutlinedTextField(
+                        value = email,
+                        onValueChange = { email = it },
+                        label = { Text("Email") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+
+                    message?.let {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(it, color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = onDismiss,
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text("Cancel")
+                        }
+                        Button(
+                            onClick = {
+                                isLoading = true
+                                message = null
+                                onSend(email) { success, error ->
+                                    isLoading = false
+                                    if (success) {
+                                        isSuccess = true
+                                    } else {
+                                        message = error
+                                    }
+                                }
+                            },
+                            enabled = email.isNotBlank() && !isLoading,
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            if (isLoading) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(18.dp),
+                                    strokeWidth = 2.dp,
+                                    color = MaterialTheme.colorScheme.onPrimary
+                                )
+                            } else {
+                                Text("Send")
+                            }
+                        }
+                    }
+                } else {
+                    Text(
+                        "✅ Reset link sent! Check your email.",
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.SemiBold,
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {
+                        Text("Done")
+                    }
+                }
+            }
+        }
     }
 }

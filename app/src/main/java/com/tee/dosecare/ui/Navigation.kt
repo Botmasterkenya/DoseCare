@@ -77,6 +77,9 @@ fun DoseCareNavHost(
             LoginScreen(
                 onLoginClick = { email, password -> authViewModel.login(email, password) },
                 onNavigateToRegister = { navController.navigate(Screen.Register.route) },
+                onForgotPassword = { email, callback ->
+                    authViewModel.sendPasswordResetEmail(email, callback)
+                },
                 isLoading = isLoading,
                 errorMessage = errorMessage
             )
