@@ -26,4 +26,7 @@ interface MedicationDao {
 
     @Query("UPDATE medications SET isActive = 0 WHERE id = :id")
     suspend fun deactivateMedication(id: Int)
+    // Add this query to MedicationDao.kt
+    @Query("SELECT * FROM medications WHERE isActive = 1")
+    suspend fun getAllMedicationsForBoot(): List<Medication>
 }

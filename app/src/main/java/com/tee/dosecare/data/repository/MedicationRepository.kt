@@ -20,6 +20,9 @@ class MedicationRepository @Inject constructor(
     fun getAllMedications(userId: String): Flow<List<Medication>> =
         medicationDao.getAllMedications(userId)
 
+    fun getAllRecentDoseLogs(userId: String, fromTime: Long, toTime: Long): Flow<List<DoseLog>> =
+        doseLogDao.getDoseLogsForDay(userId, fromTime, toTime)
+
     suspend fun getMedicationById(id: Int): Medication? =
         medicationDao.getMedicationById(id)
 

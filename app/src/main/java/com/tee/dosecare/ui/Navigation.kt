@@ -10,6 +10,7 @@ import com.tee.dosecare.ui.auth.AuthViewModel
 import com.tee.dosecare.ui.auth.LoginScreen
 import com.tee.dosecare.ui.auth.RegisterScreen
 import com.tee.dosecare.ui.home.AddMedicationScreen
+import com.tee.dosecare.ui.home.HistoryScreen
 import com.tee.dosecare.ui.home.HomeScreen
 import com.tee.dosecare.ui.onboarding.OnboardingScreen
 import com.tee.dosecare.ui.onboarding.SplashScreen
@@ -22,6 +23,8 @@ sealed class Screen(val route: String) {
     object Register : Screen("register")
     object Home : Screen("home")
     object AddMedication : Screen("add_medication")
+
+    object History : Screen("history")
 }
 
 @Composable
@@ -110,7 +113,7 @@ fun DoseCareNavHost(
         composable(Screen.Home.route) {
             HomeScreen(
                 onAddMedication = { navController.navigate(Screen.AddMedication.route) },
-                onViewHistory = { },
+                onViewHistory = { navController.navigate(Screen.History.route) },
                 onLogout = {
                     authViewModel.logout()
                     navController.navigate(Screen.Login.route) {
@@ -122,6 +125,12 @@ fun DoseCareNavHost(
 
         composable(Screen.AddMedication.route) {
             AddMedicationScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Screen.History.route) {
+            HistoryScreen(
                 onNavigateBack = { navController.popBackStack() }
             )
         }

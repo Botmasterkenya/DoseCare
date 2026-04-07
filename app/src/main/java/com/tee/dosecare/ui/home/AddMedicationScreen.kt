@@ -17,6 +17,13 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.tee.dosecare.data.local.Medication
 import com.tee.dosecare.utils.Resource
+import androidx.compose.ui.platform.LocalContext
+// Add at the top of the composable:
+
+// Then update the Button onClick:
+
+
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -45,6 +52,8 @@ fun AddMedicationScreen(
 
     var unitExpanded by remember { mutableStateOf(false) }
     var frequencyExpanded by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+
 
     // Validation
     val isTimeValid = remember(time1) {
@@ -218,7 +227,7 @@ fun AddMedicationScreen(
                         startDate = System.currentTimeMillis(),
                         notes = notes.trim()
                     )
-                    viewModel.addMedication(medication)
+                    viewModel.addMedication(medication, context)
                 },
                 enabled = isSaveEnabled,
                 modifier = Modifier
