@@ -1,5 +1,6 @@
 package com.tee.dosecare.ui.home
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
@@ -14,6 +15,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import java.util.Calendar
+import java.util.Date
 import javax.inject.Inject
 
 @HiltViewModel
@@ -33,16 +36,26 @@ class MedicationViewModel @Inject constructor(
     private val _operationState = MutableStateFlow<Resource<Unit>?>(null)
     val operationState: StateFlow<Resource<Unit>?> = _operationState
 
+    private val _allDoseLogs = MutableStateFlow<List<DoseLog>>(emptyList())
+    val allDoseLogs: StateFlow<List<DoseLog>> = _allDoseLogs
+
+    private val _currentStreak = MutableStateFlow(0)
+    val currentStreak: StateFlow<Int> = _currentStreak
+
     init {
         loadMedications()
         loadTodayDoseLogs()
-        loadAllDoseLogs() // add this line
+        loadAllDoseLogs()
     }
 
     private fun loadMedications() {
         viewModelScope.launch {
-            repository.getActiveMedications(userId).collectLatest {
-                _medications.value = it
+            repository.getActiveMedications(userId).collectLatest { meds ->
+                _medications.value = meds
+                // Auto-schedule dose logs for today for each medication
+                meds.forEach { medication ->
+                    scheduleDosesForTodayIfNeeded(medication)
+                }
             }
         }
     }
@@ -56,6 +69,7 @@ class MedicationViewModel @Inject constructor(
             }
         }
     }
+
     private fun loadAllDoseLogs() {
         viewModelScope.launch {
             // Load last 30 days of history
@@ -101,13 +115,8 @@ class MedicationViewModel @Inject constructor(
 
         return streak
     }
-    private val _allDoseLogs = MutableStateFlow<List<DoseLog>>(emptyList())
-    val allDoseLogs: StateFlow<List<DoseLog>> = _allDoseLogs
 
-    private val _currentStreak = MutableStateFlow(0)
-    val currentStreak: StateFlow<Int> = _currentStreak
-
-    fun addMedication(medication: Medication, context: android.content.Context) {
+    fun addMedication(medication: Medication, context: Context) {
         viewModelScope.launch {
             _operationState.value = Resource.Loading
             try {
@@ -115,6 +124,8 @@ class MedicationViewModel @Inject constructor(
                 // Schedule alarms for the newly added medication
                 val savedMedication = medication.copy(id = id.toInt(), userId = userId)
                 AlarmScheduler.scheduleMedicationAlarms(context, savedMedication)
+                // Create dose logs for today
+                scheduleDosesForTodayIfNeeded(savedMedication)
                 _operationState.value = Resource.Success(Unit)
             } catch (e: Exception) {
                 _operationState.value = Resource.Error(e.message ?: "Failed to add medication")
@@ -122,8 +133,10 @@ class MedicationViewModel @Inject constructor(
         }
     }
 
-    fun deleteMedication(medication: Medication) {
+    fun deleteMedication(medication: Medication, context: Context) {
         viewModelScope.launch {
+            // Cancel alarms before deactivating
+            AlarmScheduler.cancelMedicationAlarms(context, medication)
             repository.deactivateMedication(medication.id)
         }
     }
@@ -135,27 +148,43 @@ class MedicationViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Schedules dose logs for today, but only if they don't already exist.
+     * This prevents duplicates when the ViewModel is re-created.
+     */
+    private suspend fun scheduleDosesForTodayIfNeeded(medication: Medication) {
+        val startOfDay = getStartOfDay()
+        val endOfDay = startOfDay + 86400000L
+
+        // Check if dose logs already exist for this medication today
+        val existingCount = repository.getDoseLogCountForMedicationInRange(
+            medication.id, startOfDay, endOfDay
+        )
+        if (existingCount > 0) return // Already scheduled
+
+        val times = medication.times.removeSurrounding("[", "]")
+            .split(",")
+            .map { it.trim().removeSurrounding("\"") }
+
+        times.forEach { time ->
+            val parts = time.split(":")
+            if (parts.size == 2) {
+                val hours = parts[0].toLongOrNull() ?: 0L
+                val minutes = parts[1].toLongOrNull() ?: 0L
+                val scheduledTime = startOfDay + (hours * 3600000L) + (minutes * 60000L)
+                val doseLog = DoseLog(
+                    medicationId = medication.id,
+                    scheduledTime = scheduledTime,
+                    userId = userId
+                )
+                repository.insertDoseLog(doseLog)
+            }
+        }
+    }
+
     fun scheduleDosesForToday(medication: Medication) {
         viewModelScope.launch {
-            val times = medication.times.removeSurrounding("[", "]")
-                .split(",")
-                .map { it.trim().removeSurrounding("\"") }
-
-            val startOfDay = getStartOfDay()
-            times.forEach { time ->
-                val parts = time.split(":")
-                if (parts.size == 2) {
-                    val hours = parts[0].toLongOrNull() ?: 0L
-                    val minutes = parts[1].toLongOrNull() ?: 0L
-                    val scheduledTime = startOfDay + (hours * 3600000L) + (minutes * 60000L)
-                    val doseLog = DoseLog(
-                        medicationId = medication.id,
-                        scheduledTime = scheduledTime,
-                        userId = userId
-                    )
-                    repository.insertDoseLog(doseLog)
-                }
-            }
+            scheduleDosesForTodayIfNeeded(medication)
         }
     }
 
@@ -164,11 +193,11 @@ class MedicationViewModel @Inject constructor(
     }
 
     private fun getStartOfDay(): Long {
-        val cal = java.util.Calendar.getInstance()
-        cal.set(java.util.Calendar.HOUR_OF_DAY, 0)
-        cal.set(java.util.Calendar.MINUTE, 0)
-        cal.set(java.util.Calendar.SECOND, 0)
-        cal.set(java.util.Calendar.MILLISECOND, 0)
+        val cal = Calendar.getInstance()
+        cal.set(Calendar.HOUR_OF_DAY, 0)
+        cal.set(Calendar.MINUTE, 0)
+        cal.set(Calendar.SECOND, 0)
+        cal.set(Calendar.MILLISECOND, 0)
         return cal.timeInMillis
     }
 }

@@ -29,4 +29,7 @@ interface DoseLogDao {
 
     @Query("SELECT COUNT(*) FROM dose_logs WHERE userId = :userId AND scheduledTime BETWEEN :start AND :end")
     suspend fun getTotalScheduledInRange(userId: String, start: Long, end: Long): Int
+
+    @Query("SELECT COUNT(*) FROM dose_logs WHERE medicationId = :medicationId AND scheduledTime BETWEEN :start AND :end")
+    suspend fun getDoseLogCountForMedicationInRange(medicationId: Int, start: Long, end: Long): Int
 }

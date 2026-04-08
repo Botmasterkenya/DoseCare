@@ -72,16 +72,7 @@ class AuthViewModel @Inject constructor(
     }
     fun sendPasswordResetEmail(email: String, onResult: (Boolean, String?) -> Unit) {
         viewModelScope.launch {
-            try {fun sendPasswordResetEmail(email: String, onResult: (Boolean, String?) -> Unit) {
-    viewModelScope.launch {
-        try {
-            firebaseAuth.sendPasswordResetEmail(email).await()
-            onResult(true, null)
-        } catch (e: Exception) {
-            onResult(false, e.message ?: "Failed to send reset email")
-        }
-    }
-}
+            try {
                 firebaseAuth.sendPasswordResetEmail(email).await()
                 onResult(true, null)
             } catch (e: Exception) {

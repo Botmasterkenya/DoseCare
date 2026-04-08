@@ -32,7 +32,7 @@ object AlarmScheduler {
             val triggerTime = getNextTriggerTime(hour, minute)
             val requestCode = getRequestCode(medication.id, index)
 
-            val intent = buildAlarmIntent(context, medication, requestCode)
+            val intent = buildAlarmIntent(context, medication, requestCode, index, hour, minute)
 
             try {
                 // setAlarmClock is the most reliable — shows in system clock, survives doze
@@ -40,7 +40,7 @@ object AlarmScheduler {
                     AlarmManager.AlarmClockInfo(triggerTime, intent),
                     intent
                 )
-                Log.d(TAG, "Scheduled alarm for ${medication.name} at $hour:$minute (triggerTime=$triggerTime)")
+                Log.d(TAG, "Scheduled alarm for ${medication.name} at $hour:$minute (triggerTime=$triggerTime, requestCode=$requestCode)")
             } catch (e: SecurityException) {
                 Log.e(TAG, "SecurityException scheduling alarm: ${e.message}")
                 // Fallback to setExact
@@ -58,9 +58,71 @@ object AlarmScheduler {
         times.forEachIndexed { index, (hour, minute) ->
             val triggerTime = getNextTriggerTime(hour, minute)
             val requestCode = getRequestCode(medication.id, index)
-            val intent = buildAlarmIntent(context, medication, requestCode)
+            val intent = buildAlarmIntent(context, medication, requestCode, index, hour, minute)
             alarmManager.set(AlarmManager.RTC_WAKEUP, triggerTime, intent)
             Log.d(TAG, "Scheduled inexact alarm for ${medication.name} at $hour:$minute")
+        }
+    }
+
+    /**
+     * Reschedule a single alarm for the next day after it fires.
+     * Called from AlarmReceiver.onReceive() to create a daily-repeating alarm.
+     */
+    fun scheduleNextDayAlarm(
+        context: Context,
+        medicationId: Int,
+        medicationName: String,
+        dosage: String,
+        timeIndex: Int,
+        hour: Int,
+        minute: Int
+    ) {
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val requestCode = getRequestCode(medicationId, timeIndex)
+
+        // Always schedule for tomorrow
+        val calendar = Calendar.getInstance().apply {
+            add(Calendar.DAY_OF_YEAR, 1)
+            set(Calendar.HOUR_OF_DAY, hour)
+            set(Calendar.MINUTE, minute)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        val triggerTime = calendar.timeInMillis
+
+        val intent = Intent(context, AlarmReceiver::class.java).apply {
+            putExtra("medication_name", medicationName)
+            putExtra("dosage", dosage)
+            putExtra("notification_id", requestCode)
+            putExtra("medication_id", medicationId)
+            putExtra("time_index", timeIndex)
+            putExtra("alarm_hour", hour)
+            putExtra("alarm_minute", minute)
+        }
+        val pendingIntent = PendingIntent.getBroadcast(
+            context,
+            requestCode,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !alarmManager.canScheduleExactAlarms()) {
+                alarmManager.set(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent)
+            } else {
+                alarmManager.setAlarmClock(
+                    AlarmManager.AlarmClockInfo(triggerTime, pendingIntent),
+                    pendingIntent
+                )
+            }
+            Log.d(TAG, "Rescheduled next-day alarm for $medicationName at $hour:$minute (triggerTime=$triggerTime)")
+        } catch (e: SecurityException) {
+            Log.e(TAG, "SecurityException rescheduling: ${e.message}")
+            try {
+                alarmManager.setExact(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent)
+            } catch (e2: Exception) {
+                Log.e(TAG, "Failed to reschedule alarm: ${e2.message}")
+            }
         }
     }
 
@@ -77,16 +139,27 @@ object AlarmScheduler {
             )
             pendingIntent?.let {
                 alarmManager.cancel(it)
-                Log.d(TAG, "Cancelled alarm for ${medication.name}")
+                Log.d(TAG, "Cancelled alarm for ${medication.name} (requestCode=$requestCode)")
             }
         }
     }
 
-    private fun buildAlarmIntent(context: Context, medication: Medication, requestCode: Int): PendingIntent {
+    private fun buildAlarmIntent(
+        context: Context,
+        medication: Medication,
+        requestCode: Int,
+        timeIndex: Int,
+        hour: Int,
+        minute: Int
+    ): PendingIntent {
         val intent = Intent(context, AlarmReceiver::class.java).apply {
             putExtra("medication_name", medication.name)
             putExtra("dosage", "${medication.dosage} ${medication.unit}")
             putExtra("notification_id", requestCode)
+            putExtra("medication_id", medication.id)
+            putExtra("time_index", timeIndex)
+            putExtra("alarm_hour", hour)
+            putExtra("alarm_minute", minute)
         }
         return PendingIntent.getBroadcast(
             context,

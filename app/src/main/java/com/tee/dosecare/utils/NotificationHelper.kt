@@ -6,8 +6,8 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import androidx.core.app.NotificationCompat
+import com.tee.dosecare.DoseCareApp
 import com.tee.dosecare.MainActivity
-import com.tee.dosecare.R
 
 object NotificationHelper {
     const val CHANNEL_ID = "dosecare_reminders"

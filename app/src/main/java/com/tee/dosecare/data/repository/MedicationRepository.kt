@@ -53,4 +53,7 @@ class MedicationRepository @Inject constructor(
 
     suspend fun getTotalTakenCount(userId: String): Int =
         doseLogDao.getTotalTakenCount(userId)
+
+    suspend fun getDoseLogCountForMedicationInRange(medicationId: Int, start: Long, end: Long): Int =
+        doseLogDao.getDoseLogCountForMedicationInRange(medicationId, start, end)
 }
